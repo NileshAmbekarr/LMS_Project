@@ -2,8 +2,11 @@ import crypto from 'crypto';
 import fs from 'fs/promises'
 
 import cloudinary from 'cloudinary';
-import asyncHandler from '../middleware/asyncHandler.middleware.js'
+import asyncHandler from '../middleware/asyncHandler.middleware.js';
+import sendEmail from '../utils/sendEmail.js';
+import AppError from '../utils/appError.js';
 import user from '../models/user.model.js';
+import User from '../models/user.model.js';
 
 const cookieOptions = {
     secure: process.env.NODE_ENV === 'production' ? true : false,
@@ -22,6 +25,75 @@ export const registerUser = asyncHandler(async(req, res, next) => {
     // Destructing the necessary data from req object
     const {fullName, email, password} = req.body;
 
+    if(!fullName || !email || !password){
+        return next(new AppError('All fields are Required !!', 400));
+    }
+
+    // check if the user exist with the provided email
+
+    const userExist = await User.findOne({email});
+
+    if(userExist) {
+        return next(new AppError('User Already Exist ! Please logIn ', 409));
+    }
+
+    // Create  new User with the given4 Necessary data and save to DB
+
+    const user = await User.create({
+        fullName,
+        email,
+        password, 
+        avatar:{
+            public_id: email,
+            secure_url: ""
+        }
+    });
+
+    // If user Not created Send Massage responce
+
+    if(!user){
+        return next(new AppError('User RegiStration Failed please try again later ', 400))
+    }
+
+    // Run only if user sends a file 
+
+    if(req.file){
+        try {
+            const result = await cloudinary.v2.uploader.upload(req.file.path, {
+                folder: 'lms', // save fiel in a folder named 'lms'
+                width : 250,
+                height: 250,
+                gravity: 'faces', // This option tells cloudinary to center the image around detected faces (if any) after cropping or resizing the original image 
+                crop : 'fill'
+
+            });
+        } catch (error) {
+            return next(
+                new AppError(error || "File Not uploaded , Please try again ", 400)
+            );
+        }
+    }
+
+    // save the user Object
+
+    await user.save();
+
+    // Generating a JWT token 
+    const token = await user.generateJWTToken();
+
+    // Setting the password to undefined so it does not get sent in email response
+    user.password = undefined;
+
+    // setting the token in the cookie with the name token along with cookieOptions 
+    res,cookie('token', token , cookieOptions)
+    
+    // If all good send the responce to the Frontend 
+
+    res.status(201).json({
+        success:true,
+        massage: 'user registered succesfully ',
+        user
+    })
 })
 
 /**
