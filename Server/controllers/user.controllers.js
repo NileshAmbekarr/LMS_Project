@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import fs from 'fs/promises'
 
 import cloudinary from 'cloudinary';
-
+import asyncHandler from '../middleware/asyncHandler.middleware.js'
 import user from '../models/user.model.js';
 
 const cookieOptions = {
@@ -19,6 +19,8 @@ const cookieOptions = {
  * @ACCESS Public
  */
 export const registerUser = asyncHandler(async(req, res, next) => {
+    // Destructing the necessary data from req object
+    const {fullName, email, password} = req.body;
 
 })
 
