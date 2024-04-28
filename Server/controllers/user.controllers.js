@@ -85,7 +85,7 @@ export const registerUser = asyncHandler(async(req, res, next) => {
     user.password = undefined;
 
     // setting the token in the cookie with the name token along with cookieOptions 
-    res,cookie('token', token , cookieOptions)
+    res.cookie('token', token , cookieOptions)
     
     // If all good send the responce to the Frontend 
 
@@ -102,8 +102,39 @@ export const registerUser = asyncHandler(async(req, res, next) => {
  * @ACCESS Public
  */
 export const loginUser = asyncHandler(async(req, res, next) => {
+    // DEstructiong the necessary data from request bidy
+    const {email , password} = req.body;
 
-})
+    if(!email || !password){
+        return next(new AppError('Email and Paaword is required ', 400))
+    }
+
+    // Finding the user with the given email 
+    const user = await User.findOne({email}).select('+password');
+
+    //If no user exist or sent password do not match then send genweric responce 
+    if(!(user && (await user.comparePassword(password)))){
+        return next(
+            new AppError('Email or Password do not match or user does not exist ', 401)
+        )
+    }
+
+    // Generating a JWT token 
+    const token = await user.generaqteJWTToken();
+
+    // Settignthe password to undefines so it does not get snet in responce 
+    user.password = undefined;
+
+    // Settign the token in the cookie with the name tioken along with cookieOptions 
+    res.cookie('token', token, cookieOptions);
+
+    // IF alll good send the responce to the frontend 
+    res.status(200).json({
+        success: true,
+        massage: 'User Logged in successfully ',
+        user,
+    })
+});
 
 /**
  * @LOGOUT
@@ -112,7 +143,20 @@ export const loginUser = asyncHandler(async(req, res, next) => {
  */
 
 export const logoutUser = asyncHandler(async(req, res, next) => {
+    // Settign the cookie value into null
+    res.cookie('token', null {
+        secure: process.env.NODE_ENV === 'production' ? true : false,
+        maxAge: 0,
+        httpOnly: true,
+    })
+    // After this the cookie values are set to null , means use is logged out 
 
+    // sending the responce 
+    res.status(200).json({
+        success: true,
+        massage:'Use logged out successfully',
+    })
+    
 })
 
 /**
@@ -122,7 +166,13 @@ export const logoutUser = asyncHandler(async(req, res, next) => {
  */
 
 export const getLoggedInUserDetails = asyncHandler(async (req, res, next) => {
-
+    // Finding the user using the id from modified req object 
+    const user = await User.findById(user.req.id)
+    res.status(200).json({
+        success: true,
+        massage: 'User Details ',
+        user
+    })
 })
 
 /**
@@ -131,7 +181,25 @@ export const getLoggedInUserDetails = asyncHandler(async (req, res, next) => {
  * @ACCESS Public
  */
 export const forgotPassword = asyncHandler(async(req, res, next)=> {
+    // Extracting the email fron request body
+    const {email } = req.body;
 
+    if(!email){
+        return next(
+            new AppError('email id Required', 400)
+        )
+    }
+
+    // Finding the user 
+    const user = await User.findOne({email})
+
+    // If no user found send themasssage email not required 
+    if(!user){
+        return next(
+            new AppError('Email Not registred ', 400)
+        )
+    }
+    //Genatating the  reting data 
 })
 
 /**
